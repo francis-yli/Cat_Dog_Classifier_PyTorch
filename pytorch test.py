@@ -8,29 +8,10 @@ from torchvision import datasets, transforms, models
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Load model, use pretrained ResNet 50
-model = models.resnet50(pretrained=True)
-
-print(model)
-
-# Use CPU if no GPU available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Modify only on the last layer
-for param in model.parameters():
-    # freeze weights
-    # requires_grad is an attribute if a tensor requires gradients
-    param.requires_grad = False
-    
-# Set up fully connected layer
-# nn.Sequential() apply new model/layer in sequence to previous model
-model.fc = nn.Sequential(nn.Linear(2048, 512), # Linear(input dim, hidden dim)
-                                 nn.ReLU(), # Activation function
-                                 nn.Dropout(0.2), #
-                                 nn.Linear(512, 10), # Linear(hidden dim, output dim)
-                                 nn.LogSoftmax(dim=1))
-criterion = nn.NLLLoss()
-optimizer = optim.Adam(model.fc.parameters(), lr=0.003)
-model.to(device)
-
-print("test")
+m = nn.Linear(3,4)
+input = torch.randn(2,2,3)
+output = m(input)
+print(input)
+print(input.size())
+print(output)
+print(output.size())

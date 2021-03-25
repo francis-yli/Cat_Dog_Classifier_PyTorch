@@ -8,8 +8,8 @@ from torchvision import datasets, transforms, models
 import matplotlib.pyplot as plt
 import numpy as np
 
-m = nn.Linear(3,4)
-input = torch.randn(2,2,3)
+m = nn.Dropout(p=0.2)
+input = torch.randn(2,3)
 output = m(input)
 print(input)
 print(input.size())

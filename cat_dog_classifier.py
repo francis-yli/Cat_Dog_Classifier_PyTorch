@@ -9,13 +9,25 @@ from torchvision import datasets, transforms, models
 import matplotlib.pyplot as plt
 import numpy as np
 
+#################################
+# ---- Variables For Tweak ---- #
+#################################
+# data file
+# for image classification, put images from different categories into corresponding folders
+train_dir = 'C:/Users/franc/Documents/Dataset/cats_and_dogs/test'
+test_dir = 'C:/Users/franc/Documents/Dataset/cats_and_dogs/test'
+
+# categories
+classes = ('cat', 'dog')
+
+BATCH_SIZE = 32
+EPOCHES = 1
+
+
+
 #########################
 # ---- Set up Data ---- #
 #########################
-
-# data file
-# for image classification, put images from different categories into corresponding folders
-data_dir = 'C:/Users/franc/Documents/Dataset/cats_and_dogs/test'
 
 # Define data-preprocessing function
 # resize image and convert to tensor
@@ -28,12 +40,12 @@ image_train_trans = transforms.Compose([transforms.RandomRotation(30),
                                                             [0.5, 0.5, 0.5])])
 
 image_test_trans = transforms.Compose([transforms.RandomRotation(30),
-                                     transforms.RandomResizedCrop(224),
+                                     transforms.CenterCrop(224),
                                      transforms.ToTensor()])
 
 # Load data and normalize with transform function
-image_train_set = datasets.ImageFolder(root=data_dir, transform=image_train_trans)
-image_test_set = datasets.ImageFolder(root=data_dir, transform=image_train_trans)
+image_train_set = datasets.ImageFolder(root=train_dir, transform=image_train_trans)
+image_test_set = datasets.ImageFolder(root=test_dir, transform=image_train_trans)
 
 # --TEST-- #
 #print(image_train_set.classes) #show class names sorted alphabetically
@@ -42,21 +54,20 @@ image_test_set = datasets.ImageFolder(root=data_dir, transform=image_train_trans
 
 
 # Forward normalized data into data loader
-image_train_loader = torch.utils.data.DataLoader(image_train_set, batch_size=32, shuffle=True)
-image_test_loader = torch.utils.data.DataLoader(image_test_set, batch_size=32, shuffle=True)
-
-# iteration on data
-data_iter = iter(image_train_loader)
-images, labels = next(data_iter)
+image_train_loader = torch.utils.data.DataLoader(image_train_set, batch_size=BATCH_SIZE, shuffle=True)
+image_test_loader = torch.utils.data.DataLoader(image_test_set, batch_size=BATCH_SIZE, shuffle=True)
 
 # --TEST-- #
 # show the first image in image_loader
 # permute() rearranges the dimensions of the tensor
 # in this case, rearranges C*H*W into H*W*C
+#data_iter = iter(image_train_loader)
+#images, labels = next(data_iter)
+#print(images.shape)
 #for i in range(4):
-#    plt.imshow(images[i].permute(1,2,0))
+#plt.imshow(images[i].permute(1,2,0))
 #    plt.axis('off')
-#    plt.show()
+#plt.show()
 
 
 ##########################
@@ -143,58 +154,72 @@ model.to(device)
 # epoch, forward and backward run of all data
 # batch size, number of data in one run
 # iteration, forward and backward run of [batch] number of data
-epoches = 1
-steps = 0
 
-train_losses, test_losses = [], []
+for e in range(EPOCHES):  #loop over our data iterator
 
-for e in range(epoches):
-    running_loss = 0
-    
-    for images, labels in image_train_loader:
-        steps += 1
-        images, labels = images.to(device), labels.to(device)
-        
+    running_loss = 0.0
+
+    # for count, value in enumerate(iterable, start = 0)
+    for i, data in enumerate(image_train_loader):
+        # data, a list of [inputs, labels]
+        inputs, labels = data
+        # assure data and model are on the same device
+        inputs, labels = inputs.to(device), labels.to(device)
+
+        # zero the parameter gradients
+        # PyTorch accumulates the gradients on subsequent backward passes
         optimizer.zero_grad()
-        
-        logits = model(images)
-        
-        loss = criterion(logits, labels)
-        
+
+        # forward run
+        outputs = model(inputs)
+        # compute loss
+        loss = criterion(outputs, labels)
+        # backward run
         loss.backward()
-        
+
+        # optimize, updates the parameters
         optimizer.step()
-        
+
+        # print stats
+        # item() converts loss tensor to python float32
         running_loss += loss.item()
-        
-        train_losses.append(running_loss)
-        
-        if steps % 5 == 0:
-            test_loss, accuracy = 0, 0
-        
-            with torch.no_grad():
-                model.eval()
 
-                for images, labels, in image_test_loader:
-                    images, labels = images.to(device), labels.to(device)
+        if i % 20 == 19:    # print avg running_loss every 20 mini-batches
+            print('[%d, %5d] loss: %.3f' %
+                (e + 1, i + 1, running_loss / 20)) # +1 for easy reading
+            
+            # reset running_loss
+            running_loss = 0.0
 
-                    logits = model(images)
+#print('Training Complete')
 
-                    test_loss += criterion(logits, labels)
+# save model
 
-                    ps = torch.exp(logits)
-
-                    top_p, top_class = ps.topk(1, dim=1)
-                    equals = top_class == labels.view(*top_class.shape)
-
-                    accuracy += torch.mean(equals.type(torch.FloatTensor)).item()
+#save_dir = ''
+#torch.save(net.state_dict(), save_dir)
 
 
-            print(f"Epoch: {e+1}/{epoches};"
-                  f"Train_loss: {running_loss};"
-                  f"Test_loss: {test_loss/len(image_test_loader)};"
-                  f"Accuracy: {accuracy/len(image_test_loader)}")
-            model.train()
-            running_loss = 0
+#########################################
+# ---- Test Model with Test Image  ---- #
+#########################################
 
-print('Finished Training')
+image_test_iter = iter(image_test_loader)
+images, labels = next(image_test_iter)
+images = images.to(device)
+
+test_outputs = model(images)
+max_value, predict_value = torch.max(test_outputs, 1)
+
+print(images.shape)
+
+# print images
+#plt.figure(figsize=[, height])
+imglist = [images[0], images[1], images[2], images[3]]
+plt.imshow(np.transpose(torchvision.utils.make_grid(imglist).numpy(), (1,2,0)))
+#plt.axis('off')
+plt.show()
+
+# print results
+print('Labels: ', ' '.join('%5s' % classes[labels[j]] for j in range(4)))
+
+print('Predicted: ', ' '.join('%5s' % classes[predict_value[k]] for k in range(4))) 

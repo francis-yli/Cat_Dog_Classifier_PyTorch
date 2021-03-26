@@ -1,4 +1,6 @@
 # Cat Dog Classfier ussing pre-trained ResNet50
+# Yangjia Li (Francis)
+# Mar. 23, 2021
 
 import torch
 from torch import nn
@@ -14,15 +16,21 @@ import numpy as np
 #################################
 # data file
 # for image classification, put images from different categories into corresponding folders
-train_dir = 'C:/Users/franc/Documents/Dataset/cats_and_dogs/test'
-test_dir = 'C:/Users/franc/Documents/Dataset/cats_and_dogs/test'
+train_dir = 'C:/Users/franc/Documents/Dataset/cats_and_dogs/train_set'
+test_dir = 'C:/Users/franc/Documents/Dataset/cats_and_dogs/test_set'
 
-# categories
+# classification categories
 classes = ('cat', 'dog')
 
+# num of samples utilized for one iteration
+# larger BATCH_SIZE increases training speed and accuracy, but requires more GPU memeory
+# smaller BATCH_SIZE may cause the model hard to converge
 BATCH_SIZE = 32
+
+# num of complete training of all samples
 EPOCHES = 1
 
+# iter = EPOCHES/BATCH_SIZE
 
 
 #########################
@@ -30,7 +38,7 @@ EPOCHES = 1
 #########################
 
 # Define data-preprocessing function
-# resize image and convert to tensor
+# resize/crop/rotate/flip image and convert to tensor
 # add randomness would help network generalizes features
 image_train_trans = transforms.Compose([transforms.RandomRotation(30),
                                        transforms.RandomResizedCrop(224),
@@ -41,11 +49,13 @@ image_train_trans = transforms.Compose([transforms.RandomRotation(30),
 
 image_test_trans = transforms.Compose([transforms.RandomRotation(30),
                                      transforms.CenterCrop(224),
-                                     transforms.ToTensor()])
+                                     transforms.ToTensor(),
+                                     transforms.Normalize([0.5, 0.5, 0.5], 
+                                                            [0.5, 0.5, 0.5])])
 
 # Load data and normalize with transform function
 image_train_set = datasets.ImageFolder(root=train_dir, transform=image_train_trans)
-image_test_set = datasets.ImageFolder(root=test_dir, transform=image_train_trans)
+image_test_set = datasets.ImageFolder(root=test_dir, transform=image_test_trans)
 
 # --TEST-- #
 #print(image_train_set.classes) #show class names sorted alphabetically
@@ -60,19 +70,27 @@ image_test_loader = torch.utils.data.DataLoader(image_test_set, batch_size=BATCH
 # --TEST-- #
 # show the first image in image_loader
 # permute() rearranges the dimensions of the tensor
-# in this case, rearranges C*H*W into H*W*C
+# in this case, rearranges C*H*W to H*W*C
 #data_iter = iter(image_train_loader)
 #images, labels = next(data_iter)
 #print(images.shape)
 #for i in range(4):
-#plt.imshow(images[i].permute(1,2,0))
-#    plt.axis('off')
-#plt.show()
+#   plt.imshow(images[i].permute(1,2,0))
+#   plt.axis('off')
+#   plt.show()
 
 
-##########################
+##########################a
 # ---- Set up Model ---- #
 ##########################
+
+# “In practice, very few people train an entire Convolutional Network from scratch (with random initialization),
+# because it is relatively rare to have a dataset of sufficient size.
+# Instead, it is common to pretrain a ConvNet on a very large dataset
+# (e.g. ImageNet, which contains 1.2 million images with 1000 categories),
+# and then use the ConvNet either as an initialization
+# or a fixed feature extractor for the task of interest.”
+# -- CS231n Stanford
 
 # Load model, use pretrained ResNet 50
 model = models.resnet50(pretrained=True)
@@ -83,10 +101,9 @@ model = models.resnet50(pretrained=True)
 # Use CPU if no GPU available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Modify only on the last layer
+# Modify only on FC layer (model decision making)
 for param in model.parameters():
     # freeze weights
-    # requires_grad, if a tensor requires gradients
     param.requires_grad = False
     
 # Set up fully connected layer
@@ -210,16 +227,40 @@ images = images.to(device)
 test_outputs = model(images)
 max_value, predict_value = torch.max(test_outputs, 1)
 
-print(images.shape)
+# convert tensor to cpu to host memeory first
+images = images.cpu()
 
 # print images
-#plt.figure(figsize=[, height])
+plt.figure(figsize=[112, 112])
 imglist = [images[0], images[1], images[2], images[3]]
-plt.imshow(np.transpose(torchvision.utils.make_grid(imglist).numpy(), (1,2,0)))
-#plt.axis('off')
+plt.imshow(torchvision.utils.make_grid(imglist).permute(1,2,0))
+plt.axis('off')
 plt.show()
 
 # print results
 print('Labels: ', ' '.join('%5s' % classes[labels[j]] for j in range(4)))
 
-print('Predicted: ', ' '.join('%5s' % classes[predict_value[k]] for k in range(4))) 
+print('Predicted: ', ' '.join('%5s' % classes[predict_value[k]] for k in range(4)))
+
+# analyze accuracy
+correct = 0
+total = 0
+i=0
+with torch.no_grad():
+    for data in image_test_loader:
+        
+        images, labels = data
+        
+        images, labels = images.to(device), labels.to(device)
+        
+        test_outputs = model(images)
+
+        max_value, predict_value = torch.max(test_outputs, 1)
+        
+        total += labels.size(0)
+        
+        correct += (predict_value == labels).sum().item()
+        
+
+print('Accuracy of the model on the %d test images: %d %%' % (total,
+    100 * correct / total))

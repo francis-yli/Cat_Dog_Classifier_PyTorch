@@ -1,4 +1,4 @@
-# Cat Dog Classfier ussing pre-trained ResNet50
+# Cat Dog Classfier using pre-trained ResNet50
 # Yangjia Li (Francis)
 # Mar. 23, 2021
 
@@ -16,8 +16,10 @@ import numpy as np
 #################################
 # data file
 # for image classification, put images from different categories into corresponding folders
-train_dir = 'C:/Users/franc/Documents/Dataset/cats_and_dogs/train_set'
-test_dir = 'C:/Users/franc/Documents/Dataset/cats_and_dogs/test_set'
+
+## TODO ##
+train_dir = ''
+test_dir = ''
 
 # classification categories
 classes = ('cat', 'dog')
@@ -28,7 +30,7 @@ classes = ('cat', 'dog')
 BATCH_SIZE = 32
 
 # num of complete training of all samples
-EPOCHES = 1
+EPOCHES = 2
 
 # iter = EPOCHES/BATCH_SIZE
 
@@ -91,6 +93,7 @@ image_test_loader = torch.utils.data.DataLoader(image_test_set, batch_size=BATCH
 # and then use the ConvNet either as an initialization
 # or a fixed feature extractor for the task of interest.”
 # -- CS231n Stanford
+# See: https://cs231n.github.io/transfer-learning/#tf
 
 # Load model, use pretrained ResNet 50
 model = models.resnet50(pretrained=True)
@@ -202,7 +205,7 @@ for e in range(EPOCHES):  #loop over our data iterator
         running_loss += loss.item()
 
         if i % 20 == 19:    # print avg running_loss every 20 mini-batches
-            print('[%d, %5d] loss: %.3f' %
+            print('[epoch: %d, batch num: %3d] loss: %.3f' %
                 (e + 1, i + 1, running_loss / 20)) # +1 for easy reading
             
             # reset running_loss
@@ -230,17 +233,17 @@ max_value, predict_value = torch.max(test_outputs, 1)
 # convert tensor to cpu to host memeory first
 images = images.cpu()
 
-# print images
-plt.figure(figsize=[112, 112])
-imglist = [images[0], images[1], images[2], images[3]]
-plt.imshow(torchvision.utils.make_grid(imglist).permute(1,2,0))
-plt.axis('off')
-plt.show()
+# print images for view
+#plt.figure(figsize=[112, 112])
+#imglist = [images[0], images[1], images[2], images[3]]
+#plt.imshow(torchvision.utils.make_grid(imglist).permute(1,2,0))
+#plt.axis('off')
+#plt.show()
 
-# print results
-print('Labels: ', ' '.join('%5s' % classes[labels[j]] for j in range(4)))
+# print results for view
+#print('Labels: ', ' '.join('%5s' % classes[labels[j]] for j in range(4)))
 
-print('Predicted: ', ' '.join('%5s' % classes[predict_value[k]] for k in range(4)))
+#print('Predicted: ', ' '.join('%5s' % classes[predict_value[k]] for k in range(4)))
 
 # analyze accuracy
 correct = 0

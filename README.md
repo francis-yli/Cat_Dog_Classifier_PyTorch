@@ -1,4 +1,4 @@
-# Image_Classification_PyTorch
+# Cat&Dog_Image_Classifier_PyTorch
 A image classifier for classifying images of cats and dogs
 
 * Data set used: [Cat & Dog](https://www.kaggle.com/tongpython/cat-and-dog)
